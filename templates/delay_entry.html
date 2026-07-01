@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Delay Entry{% endblock %}
+{% block page_title %}<i class="bi bi-pencil-square me-2" style="color:var(--blue-600)"></i>Delay Entry{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Entry Form -->
+  <div class="col-xl-7">
+    <div class="card">
+      <div class="card-header-custom">
+        <span class="card-title"><i class="bi bi-clipboard-plus"></i> New Delay Entry</span>
+        <span class="text-muted-sm">All * fields required</span>
+      </div>
+      <div class="p-4">
+        <form method="POST" action="{{ url_for('submit_delay') }}" id="delayForm">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label-sm">Shop / Department *</label>
+              <select class="form-select" name="shop_code" id="shop_code" required>
+                <option value="">Select Shop...</option>
+                {% for s in shops %}
+                <option value="{{ s.shop_code }}">{{ s.shop_desc }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Equipment *</label>
+              <select class="form-select" name="eqpt_code" id="eqpt_code" required disabled>
+                <option value="">Select Equipment...</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Sub Equipment</label>
+              <select class="form-select" name="sub_eqpt_code" id="sub_eqpt_code" disabled>
+                <option value="">Select Sub Equipment...</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Agency *</label>
+              <select class="form-select" name="agency" required>
+                <option value="">Select Agency...</option>
+                {% for a in agencies %}
+                <option value="{{ a }}">{{ a }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Steel Grade</label>
+              <select class="form-select" name="grade_code">
+                <option value="">Select Grade (optional)</option>
+                {% for g in grades %}
+                <option value="{{ g.grade_code }}">{{ g.grade_desc }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Delay Duration</label>
+              <div style="display:flex;align-items:center;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:.55rem .875rem;gap:.5rem;">
+                <i class="bi bi-clock" style="color:var(--text3);"></i>
+                <span id="duration_display" style="font-family:'JetBrains Mono',monospace;font-size:.875rem;color:var(--text3);">Auto-calculated</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Delay From *</label>
+              <input type="datetime-local" class="form-control" name="delay_from" id="delay_from" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Delay Upto *</label>
+              <input type="datetime-local" class="form-control" name="delay_upto" id="delay_upto" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label-sm">Delay Description *</label>
+              <textarea class="form-control" name="delay_desc" rows="3" placeholder="Describe the reason for delay in detail..." required></textarea>
+            </div>
+          </div>
+          <hr class="divider">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn-primary-vsp"><i class="bi bi-check-lg"></i> Submit Delay</button>
+            <button type="reset" class="btn-outline-vsp" id="clearBtn"><i class="bi bi-x-lg"></i> Clear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="col-xl-5">
+    <!-- Tips card -->
+    <div class="card mb-3" style="border-left:3px solid var(--gold);">
+      <div class="p-3">
+        <div style="font-size:.8rem;font-weight:600;color:var(--gold);margin-bottom:.5rem;"><i class="bi bi-lightbulb me-1"></i>Entry Guidelines</div>
+        <ul style="font-size:.78rem;color:var(--text2);margin:0;padding-left:1.2rem;line-height:1.8;">
+          <li>Select Shop first to load equipment list</li>
+          <li>Duration is auto-calculated from timestamps</li>
+          <li>Agency = responsible department for the delay</li>
+          <li>Be specific in the description for better analysis</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- My recent entries -->
+    <div class="card">
+      <div class="card-header-custom">
+        <span class="card-title"><i class="bi bi-clock-history"></i> My Recent Entries</span>
+        <span class="text-muted-sm">{{ my_recent|length }} records</span>
+      </div>
+      {% if my_recent %}
+      <div class="scroll-x" style="max-height:400px;overflow-y:auto;">
+        <table class="table-modern">
+          <thead><tr><th>Shop</th><th>Eqpt</th><th>Agency</th><th>Dur(m)</th></tr></thead>
+          <tbody>
+            {% for r in my_recent %}
+            <tr>
+              <td style="font-size:.75rem;font-weight:600;color:var(--blue-800);">{{ r.shop_desc }}</td>
+              <td><code style="font-size:.72rem;">{{ r.eqpt_code }}</code></td>
+              <td><span class="badge-agency badge-{{ r.agency }}">{{ r.agency }}</span></td>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:.78rem;">{{ "{:.0f}".format(r.delay_duration or 0) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state"><i class="bi bi-inbox"></i>No entries yet</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('shop_code').addEventListener('change', function(){
+  const sc = this.value;
+  const eq = document.getElementById('eqpt_code');
+  const se = document.getElementById('sub_eqpt_code');
+  eq.innerHTML = '<option value="">Select Equipment...</option>'; eq.disabled = true;
+  se.innerHTML = '<option value="">Select Sub Equipment...</option>'; se.disabled = true;
+  if(!sc) return;
+  fetch(`/api/equipment/${sc}`).then(r=>r.json()).then(items=>{
+    items.forEach(e=> eq.innerHTML += `<option value="${e}">${e}</option>`);
+    eq.disabled = false;
+  });
+});
+
+document.getElementById('eqpt_code').addEventListener('change', function(){
+  const sc = document.getElementById('shop_code').value;
+  const se = document.getElementById('sub_eqpt_code');
+  se.innerHTML = '<option value="">Select Sub Equipment...</option>'; se.disabled = true;
+  if(!this.value) return;
+  fetch(`/api/sub-equipment/${sc}/${this.value}`).then(r=>r.json()).then(items=>{
+    if(items.length){ items.forEach(s=> se.innerHTML+=`<option value="${s}">${s}</option>`); se.disabled=false; }
+  });
+});
+
+function calcDuration(){
+  const f = document.getElementById('delay_from').value;
+  const u = document.getElementById('delay_upto').value;
+  const d = document.getElementById('duration_display');
+  if(f && u){
+    const diff = (new Date(u)-new Date(f))/60000;
+    if(diff>0){
+      const h=Math.floor(diff/60), m=Math.floor(diff%60);
+      d.textContent = `${diff.toFixed(0)} min  (${h}h ${m}m)`;
+      d.style.color='var(--success)';
+    } else { d.textContent='⚠ Check times'; d.style.color='var(--danger)'; }
+  }
+}
+document.getElementById('delay_from').addEventListener('change', calcDuration);
+document.getElementById('delay_upto').addEventListener('change', calcDuration);
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  document.getElementById('eqpt_code').innerHTML='<option value="">Select Equipment...</option>'; document.getElementById('eqpt_code').disabled=true;
+  document.getElementById('sub_eqpt_code').innerHTML='<option value="">Select Sub Equipment...</option>'; document.getElementById('sub_eqpt_code').disabled=true;
+  document.getElementById('duration_display').textContent='Auto-calculated'; document.getElementById('duration_display').style.color='var(--text3)';
+});
+</script>
+{% endblock %}

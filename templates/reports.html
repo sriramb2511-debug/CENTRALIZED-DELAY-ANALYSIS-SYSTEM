@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block title %}Reports & Analytics{% endblock %}
+{% block page_title %}<i class="bi bi-graph-up-arrow me-2" style="color:var(--blue-600)"></i>Reports & Analytics{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  @media(max-width:576px){
+    canvas { max-height:180px !important; }
+    .tab-pill-btn { padding:.35rem .65rem; font-size:.78rem; }
+  }
+  @media(max-width:768px){
+    .col-md-5, .col-md-7 { width:100% !important; }
+  }
+</style>
+
+<style>
+  .tab-pill { display:inline-flex; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:3px; gap:2px; }
+  .tab-pill-btn { padding:.4rem .9rem; border-radius:7px; border:none; background:transparent; color:var(--text2); font-size:.82rem; font-weight:500; cursor:pointer; transition:all .2s; }
+  .tab-pill-btn.active { background:var(--blue-800); color:white; box-shadow:0 2px 8px rgba(0,48,135,.3); }
+  .filter-chip { display:inline-flex; align-items:center; gap:.35rem; padding:.25rem .65rem; border-radius:20px; background:var(--blue-100); color:var(--blue-800); font-size:.75rem; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Filter Panel -->
+<div class="card mb-3">
+  <div class="p-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-2">
+        <label class="form-label-sm">Shop</label>
+        <select class="form-select form-select-sm" id="f_shop">
+          <option value="">All Shops</option>
+          {% for s in shops %}
+          <option value="{{ s.shop_code }}">{{ s.shop_desc }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label-sm">Agency</label>
+        <select class="form-select form-select-sm" id="f_agency">
+          <option value="">All Agencies</option>
+          {% for a in agencies %}
+          <option value="{{ a }}">{{ a }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label-sm">From Date</label>
+        <input type="date" class="form-control form-control-sm" id="f_from" value="2003-07-01">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label-sm">To Date</label>
+        <input type="date" class="form-control form-control-sm" id="f_to" value="2005-03-31">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label-sm">Trend Group</label>
+        <select class="form-select form-select-sm" id="f_group">
+          <option value="monthly" selected>Monthly</option>
+          <option value="weekly">Weekly</option>
+          <option value="daily">Daily</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2 d-flex gap-2">
+        <button class="btn-primary-vsp flex-fill" style="padding:.4rem .5rem;font-size:.82rem;" onclick="loadAll()">
+          <i class="bi bi-search"></i> Search
+        </button>
+        <button class="btn-outline-vsp" style="padding:.38rem .65rem;font-size:.82rem;" onclick="resetFilters()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Summary KPIs -->
+<div class="row g-2 mb-3" id="kpiRow" style="display:none!important">
+  <div class="col-6 col-md-3"><div class="kpi-card kpi-blue" style="padding:.875rem;"><div class="kpi-value" style="font-size:1.4rem;" id="k_count">0</div><div class="kpi-label">Total Delays</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card kpi-gold" style="padding:.875rem;"><div class="kpi-value" style="font-size:1.4rem;" id="k_hours">0</div><div class="kpi-label">Hours Lost</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card kpi-green" style="padding:.875rem;"><div class="kpi-value" style="font-size:1.4rem;" id="k_avg">0</div><div class="kpi-label">Avg Duration(min)</div></div></div>
+  <div class="col-6 col-md-3"><div class="kpi-card kpi-red" style="padding:.875rem;"><div class="kpi-value" style="font-size:1.4rem;" id="k_shops">0</div><div class="kpi-label">Shops Affected</div></div></div>
+</div>
+
+<!-- View tabs -->
+<div class="d-flex align-items-center justify-content-between mb-3" id="viewRow" style="display:none!important">
+  <div class="tab-pill">
+    <button class="tab-pill-btn active" onclick="switchView('graphical')"><i class="bi bi-bar-chart me-1"></i>Graphical</button>
+    <button class="tab-pill-btn" onclick="switchView('tabular')"><i class="bi bi-table me-1"></i>Tabular</button>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn-outline-vsp" style="padding:.38rem .875rem;font-size:.8rem;" onclick="exportCSV()"><i class="bi bi-filetype-csv me-1"></i>CSV</button>
+    <button class="btn-outline-vsp" style="padding:.38rem .875rem;font-size:.8rem;" onclick="printReport()"><i class="bi bi-printer me-1"></i>Print</button>
+  </div>
+</div>
+
+<!-- GRAPHICAL VIEW -->
+<div id="graphicalView">
+  <div class="row g-3 mb-3">
+    <!-- Trend -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header-custom">
+          <span class="card-title"><i class="bi bi-graph-up"></i> Delay Trend</span>
+        </div>
+        <div class="p-3"><canvas id="trendChart" style="max-height:220px"></canvas></div>
+      </div>
+    </div>
+    <!-- Agency + Shop -->
+    <div class="col-md-5">
+      <div class="card h-100">
+        <div class="card-header-custom"><span class="card-title"><i class="bi bi-pie-chart"></i> Agency Distribution</span></div>
+        <div class="p-3"><canvas id="agencyChart" style="max-height:240px"></canvas></div>
+      </div>
+    </div>
+    <div class="col-md-7">
+      <div class="card h-100">
+        <div class="card-header-custom"><span class="card-title"><i class="bi bi-bar-chart-steps"></i> Department Comparison</span></div>
+        <div class="p-3"><canvas id="shopChart" style="max-height:240px"></canvas></div>
+      </div>
+    </div>
+    <!-- Stacked + Equipment -->
+    <div class="col-md-7">
+      <div class="card h-100">
+        <div class="card-header-custom"><span class="card-title"><i class="bi bi-bar-chart-fill"></i> Stacked — Shop × Agency</span></div>
+        <div class="p-3"><canvas id="stackedChart" style="max-height:260px"></canvas></div>
+      </div>
+    </div>
+    <div class="col-md-5">
+      <div class="card h-100">
+        <div class="card-header-custom"><span class="card-title"><i class="bi bi-list-ol"></i> Top 10 Equipment</span></div>
+        <div class="p-3"><canvas id="eqptChart" style="max-height:260px"></canvas></div>
+      </div>
+    </div>
+    <!-- Top causes -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header-custom"><span class="card-title"><i class="bi bi-chat-square-text"></i> Top Recurring Causes</span></div>
+        <div class="p-3" id="causesPanel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABULAR VIEW -->
+<div id="tabularView" style="display:none">
+  <div class="card">
+    <div class="card-header-custom">
+      <span class="card-title"><i class="bi bi-table"></i> Delay Records</span>
+      <span class="text-muted-sm" id="recordCount"></span>
+    </div>
+    <div id="noDataMsg" class="empty-state" style="display:none"><i class="bi bi-inbox"></i>No records found</div>
+    <div class="scroll-x" style="max-height:520px;overflow-y:auto;">
+      <table class="table-modern" id="delayTable">
+        <thead><tr>
+          <th>#</th><th onclick="sortCol(1)" style="cursor:pointer">Shop ↕</th>
+          <th onclick="sortCol(2)" style="cursor:pointer">Equipment ↕</th>
+          <th>Sub Eqpt</th>
+          <th onclick="sortCol(4)" style="cursor:pointer">Agency ↕</th>
+          <th onclick="sortCol(5)" style="cursor:pointer">Delay From ↕</th>
+          <th>Delay Upto</th>
+          <th onclick="sortCol(7)" style="cursor:pointer">Duration(min) ↕</th>
+          <th>Description</th>
+          <th>Entered By</th>
+        </tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Initial state -->
+<div id="initialState" class="card" style="padding:3rem;text-align:center;">
+  <i class="bi bi-funnel" style="font-size:3rem;color:var(--text3);display:block;margin-bottom:1rem;"></i>
+  <div style="font-size:1rem;font-weight:600;color:var(--text2);">Set filters and click Search</div>
+  <div style="font-size:.85rem;color:var(--text3);margin-top:.35rem;">Default date range covers all historical data (2003–2005)</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let tableData=[], charts={};
+const COLORS=['#003087','#c8a84b','#16a34a','#dc2626','#0891b2','#7c3aed','#d97706','#0f766e'];
+const isDark=()=>document.documentElement.getAttribute('data-theme')==='dark';
+const gc=()=>isDark()?'rgba(255,255,255,.07)':'rgba(0,0,0,.05)';
+const tc=()=>isDark()?'#8b949e':'#475569';
+function destroyCharts(){ Object.values(charts).forEach(c=>c.destroy()); charts={}; }
+
+function params(){
+  const p=new URLSearchParams();
+  const s=document.getElementById('f_shop').value;
+  const a=document.getElementById('f_agency').value;
+  const f=document.getElementById('f_from').value;
+  const t=document.getElementById('f_to').value;
+  const g=document.getElementById('f_group').value;
+  if(s)p.set('shop_code',s); if(a)p.set('agency',a);
+  if(f)p.set('from_date',f); if(t)p.set('to_date',t);
+  p.set('group_by',g);
+  return p;
+}
+
+function loadAll(){
+  document.getElementById('initialState').style.display='none';
+  document.getElementById('kpiRow').style.removeProperty('display');
+  document.getElementById('viewRow').style.removeProperty('display');
+
+  const p=params();
+  Promise.all([
+    fetch('/api/report-data?'+p+'&limit=2000').then(r=>r.json()),
+    fetch('/api/chart-data?'+p).then(r=>r.json())
+  ]).then(([rows, charts])=>{
+    tableData=rows;
+    updateKPI(rows);
+    renderTable(rows);
+    renderCharts(charts);
+  });
+}
+
+function updateKPI(data){
+  const mins=data.reduce((s,r)=>s+(r.delay_duration||0),0);
+  const shops=new Set(data.map(r=>r.shop_desc)).size;
+  document.getElementById('k_count').textContent=data.length.toLocaleString();
+  document.getElementById('k_hours').textContent=(mins/60).toFixed(1);
+  document.getElementById('k_avg').textContent=data.length?(mins/data.length).toFixed(1):0;
+  document.getElementById('k_shops').textContent=shops;
+}
+
+function renderTable(data){
+  const body=document.getElementById('tableBody');
+  const nd=document.getElementById('noDataMsg');
+  document.getElementById('recordCount').textContent=`${data.length.toLocaleString()} records`;
+  if(!data.length){body.innerHTML='';nd.style.display='';return;}
+  nd.style.display='none';
+  body.innerHTML=data.map((r,i)=>`<tr>
+    <td style="color:var(--text3);font-size:.75rem;">${i+1}</td>
+    <td style="font-weight:600;color:var(--blue-800);font-size:.8rem;">${r.shop_desc}</td>
+    <td><code style="font-size:.75rem;background:var(--steel-light);padding:.1em .4em;border-radius:4px;">${r.eqpt_code}</code></td>
+    <td style="font-size:.78rem;color:var(--text2);">${r.sub_eqpt_code||'—'}</td>
+    <td><span class="badge-agency badge-${r.agency}">${r.agency}</span></td>
+    <td style="font-size:.78rem;">${(r.delay_from||'').replace('T',' ')}</td>
+    <td style="font-size:.78rem;color:var(--text2);">${(r.delay_upto||'').replace('T',' ')}</td>
+    <td style="font-family:'JetBrains Mono',monospace;font-size:.8rem;text-align:right;">${r.delay_duration?r.delay_duration.toFixed(0):'—'}</td>
+    <td style="font-size:.75rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.delay_desc||''}">${r.delay_desc||'—'}</td>
+    <td style="font-size:.75rem;color:var(--text2);">${r.user_entered||'—'}</td>
+  </tr>`).join('');
+}
+
+function renderCharts(data){
+  destroyCharts();
+  const opts={responsive:true,maintainAspectRatio:false};
+
+  // Trend
+  charts.trend=new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{labels:data.trend.map(d=>d.label),datasets:[
+      {label:'Delays',data:data.trend.map(d=>d.count),borderColor:'#003087',backgroundColor:'rgba(0,48,135,.08)',fill:true,tension:.4,pointRadius:3,borderWidth:2},
+      {label:'Hours',data:data.trend.map(d=>(d.mins/60).toFixed(1)),borderColor:'#c8a84b',backgroundColor:'transparent',tension:.4,pointRadius:2,borderDash:[5,3],borderWidth:1.5,yAxisID:'y2'}
+    ]},
+    options:{...opts,interaction:{mode:'index'},plugins:{legend:{labels:{color:tc(),boxWidth:10,font:{size:11}}}},
+      scales:{x:{grid:{color:gc()},ticks:{color:tc(),font:{size:9},maxTicksLimit:12}},
+              y:{grid:{color:gc()},ticks:{color:tc(),font:{size:9}}},
+              y2:{position:'right',grid:{display:false},ticks:{color:'#c8a84b',font:{size:9}}}}}
+  });
+
+  // Agency donut
+  charts.agency=new Chart(document.getElementById('agencyChart'),{
+    type:'doughnut',
+    data:{labels:data.agency.map(d=>d.label),datasets:[{data:data.agency.map(d=>d.mins),backgroundColor:COLORS,borderWidth:2,borderColor:isDark()?'#161b22':'#fff',hoverOffset:6}]},
+    options:{...opts,cutout:'65%',plugins:{legend:{position:'right',labels:{color:tc(),boxWidth:10,font:{size:10}}}}}
+  });
+
+  // Shop bar
+  charts.shop=new Chart(document.getElementById('shopChart'),{
+    type:'bar',
+    data:{labels:data.shop.map(d=>d.label),datasets:[
+      {label:'Hours Lost',data:data.shop.map(d=>(d.mins/60).toFixed(1)),backgroundColor:COLORS.map(c=>c+'cc'),borderRadius:5,borderSkipped:false}
+    ]},
+    options:{...opts,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{color:tc(),font:{size:9}}},y:{grid:{color:gc()},ticks:{color:tc(),font:{size:9}}}}}
+  });
+
+  // Stacked
+  const agencies=[...new Set(data.stacked.map(d=>d.agency))];
+  const shops=[...new Set(data.stacked.map(d=>d.shop))];
+  charts.stacked=new Chart(document.getElementById('stackedChart'),{
+    type:'bar',
+    data:{labels:shops,datasets:agencies.map((ag,i)=>({
+      label:ag,
+      data:shops.map(sh=>{const r=data.stacked.find(d=>d.shop===sh&&d.agency===ag);return r?(r.mins/60).toFixed(1):0;}),
+      backgroundColor:COLORS[i%COLORS.length]+'cc',borderSkipped:false,borderRadius:3,stack:'s'
+    }))},
+    options:{...opts,scales:{x:{grid:{display:false},ticks:{color:tc(),font:{size:9}},stacked:true},y:{grid:{color:gc()},ticks:{color:tc(),font:{size:9}},stacked:true}},
+      plugins:{legend:{labels:{color:tc(),boxWidth:10,font:{size:10}}}}}
+  });
+
+  // Equipment horizontal
+  charts.eqpt=new Chart(document.getElementById('eqptChart'),{
+    type:'bar',
+    data:{labels:data.equipment.map(d=>d.label),datasets:[{label:'Hours',data:data.equipment.map(d=>(d.mins/60).toFixed(1)),backgroundColor:'rgba(200,168,75,.8)',borderRadius:4,borderSkipped:false}]},
+    options:{...opts,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gc()},ticks:{color:tc(),font:{size:9}}},y:{grid:{display:false},ticks:{color:tc(),font:{size:9}}}}}
+  });
+
+  // Top causes
+  const cp=document.getElementById('causesPanel');
+  const maxC=data.causes[0]?.count||1;
+  cp.innerHTML='<div class="row g-2">'+data.causes.map((c,i)=>`
+    <div class="col-12">
+      <div class="d-flex align-items-center gap-2">
+        <span style="width:20px;font-size:.7rem;font-weight:700;color:var(--text3);">${i+1}</span>
+        <span style="flex:1;font-size:.78rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${c.label}">${c.label}</span>
+        <span style="font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);min-width:40px;text-align:right;">${c.count}</span>
+        <div style="width:120px;"><div class="progress-vsp"><div class="progress-vsp-fill" style="width:${Math.round(c.count/maxC*100)}%"></div></div></div>
+      </div>
+    </div>`).join('')+'</div>';
+}
+
+function switchView(v){
+  document.getElementById('graphicalView').style.display=v==='graphical'?'':'none';
+  document.getElementById('tabularView').style.display=v==='tabular'?'':'none';
+  document.querySelectorAll('.tab-pill-btn').forEach((b,i)=>{
+    b.classList.toggle('active',(i===0&&v==='graphical')||(i===1&&v==='tabular'));
+  });
+}
+
+function resetFilters(){
+  document.getElementById('f_shop').value='';
+  document.getElementById('f_agency').value='';
+  document.getElementById('f_from').value='2003-07-01';
+  document.getElementById('f_to').value='2005-03-31';
+  document.getElementById('f_group').value='monthly';
+  document.getElementById('kpiRow').style.display='none';
+  document.getElementById('viewRow').style.display='none';
+  document.getElementById('initialState').style.display='';
+}
+
+function sortCol(col){
+  const body=document.getElementById('tableBody');
+  const rows=[...body.querySelectorAll('tr')];
+  rows.sort((a,b)=>{
+    const av=a.cells[col]?.textContent.trim()||'';
+    const bv=b.cells[col]?.textContent.trim()||'';
+    return isNaN(av)?av.localeCompare(bv):parseFloat(av)-parseFloat(bv);
+  });
+  rows.forEach(r=>body.appendChild(r));
+}
+
+function exportCSV(){
+  if(!tableData.length)return;
+  const h=['Shop','Equipment','Sub Equipment','Agency','Delay From','Delay Upto','Duration(min)','Description','Entered By'];
+  const rows=tableData.map(r=>[r.shop_desc,r.eqpt_code,r.sub_eqpt_code||'',r.agency,r.delay_from,r.delay_upto,r.delay_duration?.toFixed(0)||'',`"${(r.delay_desc||'').replace(/"/g,'""')}"`,r.user_entered||'']);
+  const csv=[h,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='delay_report_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+function printReport(){
+  window.print();
+}
+
+// Auto-load on page open
+loadAll();
+</script>
+{% endblock %}

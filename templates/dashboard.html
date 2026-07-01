@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}<i class="bi bi-grid-1x2 me-2" style="color:var(--blue-600)"></i>Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media(max-width:576px){
+    canvas { max-height:200px !important; }
+    .kpi-value { font-size:1.3rem !important; }
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- KPI Cards — clean, no decorative background icons -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card kpi-blue">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon"><i class="bi bi-exclamation-triangle"></i></div>
+        <div>
+          <div class="kpi-value">{{ "{:,}".format(total) }}</div>
+          <div class="kpi-label">Total Delays</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card kpi-gold">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon"><i class="bi bi-clock-history"></i></div>
+        <div>
+          <div class="kpi-value">{{ "{:,.0f}".format(total_mins/60) }}</div>
+          <div class="kpi-label">Total Hours Lost</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card kpi-green">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon"><i class="bi bi-speedometer2"></i></div>
+        <div>
+          <div class="kpi-value">{{ "{:.1f}".format(avg_dur) }}</div>
+          <div class="kpi-label">Avg Duration (min)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-card kpi-red">
+      <div class="d-flex align-items-center gap-3">
+        <div class="kpi-icon"><i class="bi bi-calendar-month"></i></div>
+        <div>
+          <div class="kpi-value">{{ "{:,}".format(month_delays) }}</div>
+          <div class="kpi-label">This Month</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart 1: Monthly Trend (full width) -->
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header-custom">
+        <span class="card-title"><i class="bi bi-graph-up"></i> Monthly Delay Trend</span>
+        <span class="text-muted-sm">Delay count and hours lost per month</span>
+      </div>
+      <div class="p-4">
+        <canvas id="trendChart" style="height:200px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart 2 + 3: Department Bar | Top Equipment -->
+<div class="row g-3 mb-3">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header-custom">
+        <span class="card-title"><i class="bi bi-building"></i> Department-wise Delay Hours</span>
+        <span class="text-muted-sm">Total hours lost per department</span>
+      </div>
+      <div class="p-4">
+        <canvas id="shopChart" style="height:240px;"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header-custom">
+        <span class="card-title"><i class="bi bi-list-ol"></i> Top Delay-Causing Equipment</span>
+        <span class="text-muted-sm">Ranked by total downtime</span>
+      </div>
+      <div class="p-4">
+        {% set max_mins = top_eqpt[0].mins if top_eqpt else 1 %}
+        {% for e in top_eqpt %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-baseline mb-1">
+            <span style="font-size:.82rem;font-weight:600;color:var(--text);">{{ loop.index }}. {{ e.eqpt_code }}</span>
+            <span style="font-size:.78rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">{{ "{:,.0f}".format(e.mins/60) }} hrs</span>
+          </div>
+          <div class="progress-vsp">
+            <div class="progress-vsp-fill" style="width:{{ [(e.mins / max_mins * 100)|int, 100]|min }}%;background:{% if loop.index==1 %}#dc2626{% elif loop.index<=3 %}#d97706{% else %}var(--blue-600){% endif %}"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Delays table -->
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header-custom">
+        <span class="card-title"><i class="bi bi-clock-history"></i> Recent Delay Entries</span>
+        <a href="{{ url_for('reports') }}" style="font-size:.78rem;color:var(--blue-600);text-decoration:none;font-weight:500;">View Full Report →</a>
+      </div>
+      <div class="scroll-x">
+        <table class="table-modern">
+          <thead>
+            <tr>
+              <th>Department</th>
+              <th>Equipment</th>
+              <th>Agency</th>
+              <th>Duration (min)</th>
+              <th>Date</th>
+              <th>Entered By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in recent %}
+            <tr>
+              <td style="font-weight:600;font-size:.82rem;color:var(--blue-800);">{{ r.shop_desc }}</td>
+              <td><code style="font-size:.78rem;background:var(--steel-light);padding:.15em .5em;border-radius:4px;">{{ r.eqpt_code }}</code></td>
+              <td><span class="badge-agency badge-{{ r.agency }}">{{ r.agency }}</span></td>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:.82rem;">{{ "{:.0f}".format(r.delay_duration or 0) }}</td>
+              <td style="font-size:.8rem;color:var(--text2);">{{ (r.delay_from or '')[:10] }}</td>
+              <td style="font-size:.78rem;color:var(--text2);">{{ r.user_entered or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+const gc = () => isDark() ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.05)';
+const tc = () => isDark() ? '#8b949e' : '#64748b';
+
+// ── 1. MONTHLY TREND ──────────────────────────────────────────────────────────
+const trendData = {{ trend_data | tojson }};
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: trendData.map(d => d.mon),
+    datasets: [
+      {
+        label: 'Delay Count',
+        data: trendData.map(d => d.c),
+        borderColor: '#003087',
+        backgroundColor: 'rgba(0,48,135,.07)',
+        fill: true, tension: .35,
+        pointRadius: 4, pointHoverRadius: 6,
+        pointBackgroundColor: '#003087',
+        borderWidth: 2
+      },
+      {
+        label: 'Hours Lost',
+        data: trendData.map(d => (d.mins / 60).toFixed(1)),
+        borderColor: '#c8a84b',
+        backgroundColor: 'transparent',
+        fill: false, tension: .35,
+        pointRadius: 3, pointHoverRadius: 5,
+        pointBackgroundColor: '#c8a84b',
+        borderDash: [6, 3], borderWidth: 1.8,
+        yAxisID: 'y2'
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: tc(), boxWidth: 12, font: { size: 12 }, padding: 20 } },
+      tooltip: { backgroundColor: isDark() ? '#1e293b' : '#fff', titleColor: tc(), bodyColor: tc(), borderColor: gc(), borderWidth: 1 }
+    },
+    scales: {
+      x: { grid: { color: gc() }, ticks: { color: tc(), font: { size: 11 } } },
+      y: {
+        grid: { color: gc() }, ticks: { color: tc(), font: { size: 11 } },
+        title: { display: true, text: 'Delay Count', color: '#003087', font: { size: 11, weight: '600' } }
+      },
+      y2: {
+        position: 'right', grid: { display: false }, ticks: { color: '#c8a84b', font: { size: 11 } },
+        title: { display: true, text: 'Hours Lost', color: '#c8a84b', font: { size: 11, weight: '600' } }
+      }
+    }
+  }
+});
+
+// ── 2. DEPARTMENT BAR ─────────────────────────────────────────────────────────
+const shopData = {{ shop_data | tojson }};
+new Chart(document.getElementById('shopChart'), {
+  type: 'bar',
+  data: {
+    labels: shopData.map(d => d.shop_desc || d.label),
+    datasets: [{
+      label: 'Hours Lost',
+      data: shopData.map(d => (d.mins / 60).toFixed(1)),
+      backgroundColor: shopData.map((_, i) => i === 0 ? '#dc2626' : i <= 2 ? '#d97706' : '#003087'),
+      borderRadius: 5,
+      borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.parsed.y} hours lost`
+        }
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tc(), font: { size: 11 } } },
+      y: {
+        grid: { color: gc() }, ticks: { color: tc(), font: { size: 11 } },
+        title: { display: true, text: 'Hours Lost', color: tc(), font: { size: 11 } }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

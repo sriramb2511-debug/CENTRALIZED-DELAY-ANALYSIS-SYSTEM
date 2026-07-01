@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In | CDAS — Vizag Steel Plant</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: #001a4d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      width: 100%;
+      max-width: 400px;
+      overflow: hidden;
+    }
+
+    /* Header strip */
+    .card-header {
+      background: #003087;
+      padding: 1.75rem 2rem 1.5rem;
+      text-align: center;
+      border-bottom: 3px solid #c8a84b;
+    }
+    .card-header .icon {
+      width: 48px; height: 48px;
+      background: rgba(200,168,75,0.2);
+      border-radius: 10px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; color: #c8a84b;
+      margin-bottom: 0.75rem;
+    }
+    .card-header h1 {
+      font-size: 1rem; font-weight: 700;
+      color: #ffffff; letter-spacing: 0.5px;
+      margin-bottom: 0.2rem;
+    }
+    .card-header p {
+      font-size: 0.75rem; color: rgba(255,255,255,0.55);
+    }
+
+    /* Form body */
+    .card-body { padding: 1.75rem 2rem; }
+
+    .error-box {
+      background: #fee2e2; border: 1px solid #fecaca;
+      border-radius: 8px; padding: 0.65rem 0.875rem;
+      font-size: 0.82rem; color: #dc2626;
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .field { margin-bottom: 1rem; }
+    .field label {
+      display: block; font-size: 0.78rem; font-weight: 600;
+      color: #475569; margin-bottom: 0.35rem;
+    }
+    .input-wrap { position: relative; }
+    .input-wrap .icon-l {
+      position: absolute; left: 0.75rem; top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8; font-size: 0.9rem; pointer-events: none;
+    }
+    .input-wrap input {
+      width: 100%; height: 44px;
+      padding: 0 2.5rem 0 2.4rem;
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.875rem; color: #0f172a;
+      background: #f8fafc; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      font-family: inherit;
+    }
+    .input-wrap input:focus {
+      border-color: #003087;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(0,48,135,0.1);
+    }
+    .input-wrap input::placeholder { color: #c0cce0; }
+
+    /* Eye toggle */
+    .eye-btn {
+      position: absolute; right: 0.75rem; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: #94a3b8; font-size: 1rem; padding: 0;
+      display: flex; align-items: center;
+      transition: color 0.2s;
+    }
+    .eye-btn:hover { color: #003087; }
+
+    .btn-submit {
+      width: 100%; height: 46px; margin-top: 0.5rem;
+      background: #003087; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 600;
+      font-family: inherit; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-submit:hover { background: #001f5c; }
+    .btn-submit:active { transform: scale(0.99); }
+    .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; }
+
+    /* Demo credentials */
+    .demo-section {
+      margin-top: 1.25rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px; overflow: hidden;
+    }
+    .demo-title {
+      background: #f8fafc;
+      padding: 0.5rem 0.875rem;
+      font-size: 0.7rem; font-weight: 700;
+      color: #94a3b8; text-transform: uppercase; letter-spacing: 0.6px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .demo-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.55rem 0.875rem; cursor: pointer;
+      transition: background 0.15s; gap: 0.5rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .demo-row:last-child { border-bottom: none; }
+    .demo-row:hover { background: #eff6ff; }
+    .demo-left { display: flex; align-items: center; gap: 0.6rem; }
+    .role-tag {
+      font-size: 0.63rem; font-weight: 700; padding: 0.15em 0.5em;
+      border-radius: 4px; white-space: nowrap;
+    }
+    .tag-admin { background: #dbeafe; color: #1e3a8a; }
+    .tag-user  { background: #f1f5f9; color: #334155; }
+    .demo-id   { font-size: 0.8rem; font-weight: 700; color: #0f172a; font-family: monospace; }
+    .demo-pw   { font-size: 0.72rem; color: #94a3b8; }
+    .fill-hint { font-size: 0.68rem; color: #3b82f6; display: none; }
+    .demo-row:hover .fill-hint { display: block; }
+
+    /* Footer */
+    .card-footer {
+      text-align: center; padding: 0.875rem 2rem 1.25rem;
+      font-size: 0.7rem; color: #94a3b8; line-height: 1.7;
+    }
+
+    /* Mobile */
+    @media (max-width: 440px) {
+      .card-header { padding: 1.5rem 1.5rem 1.25rem; }
+      .card-body   { padding: 1.5rem; }
+      .card-footer { padding: 0.75rem 1.5rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Header -->
+  <div class="card-header">
+    <div class="icon"><i class="bi bi-bar-chart-steps"></i></div>
+    <h1>CENTRALIZED DELAY ANALYSIS SYSTEM</h1>
+    <p>Rashtriya Ispat Nigam Ltd. — Vizag Steel Plant</p>
+  </div>
+
+  <!-- Body -->
+  <div class="card-body">
+
+    {% if error %}
+    <div class="error-box">
+      <i class="bi bi-exclamation-circle-fill"></i>
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" id="loginForm">
+
+      <div class="field">
+        <label for="emp_no">Employee ID / Username</label>
+        <div class="input-wrap">
+          <i class="bi bi-person icon-l"></i>
+          <input
+            type="text" id="emp_no" name="emp_no"
+            placeholder="e.g. ADMIN or 12345"
+            required autofocus autocomplete="username"
+            style="text-transform:uppercase;"
+          >
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <i class="bi bi-lock icon-l"></i>
+          <input
+            type="password" id="password" name="password"
+            placeholder="Enter your password"
+            required autocomplete="current-password"
+          >
+          <button type="button" class="eye-btn" id="eyeBtn" title="Show/hide password">
+            <i class="bi bi-eye" id="eyeIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submitBtn">
+        <i class="bi bi-box-arrow-in-right"></i> Sign In
+      </button>
+
+    </form>
+
+    <!-- Demo credentials -->
+    <div class="demo-section">
+      <div class="demo-title"><i class="bi bi-info-circle me-1"></i>Demo Credentials — click to fill</div>
+      <div class="demo-row" onclick="fillCreds('ADMIN','admin123')">
+        <div class="demo-left">
+          <span class="role-tag tag-admin">sys_admin</span>
+          <div>
+            <div class="demo-id">ADMIN</div>
+            <div class="demo-pw">admin123</div>
+          </div>
+        </div>
+        <span class="fill-hint">↑ Click to fill</span>
+      </div>
+      <div class="demo-row" onclick="fillCreds('USER1','user123')">
+        <div class="demo-left">
+          <span class="role-tag tag-user">dept_user</span>
+          <div>
+            <div class="demo-id">USER1</div>
+            <div class="demo-pw">user123</div>
+          </div>
+        </div>
+        <span class="fill-hint">↑ Click to fill</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="card-footer">
+    &copy; 2024 Vizag Steel Plant · RINL<br>
+    Contact your department admin for credentials
+  </div>
+
+</div>
+
+<script>
+  // Show / hide password
+  document.getElementById('eyeBtn').addEventListener('click', function () {
+    var inp  = document.getElementById('password');
+    var icon = document.getElementById('eyeIcon');
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      icon.className = 'bi bi-eye-slash';
+    } else {
+      inp.type = 'password';
+      icon.className = 'bi bi-eye';
+    }
+    inp.focus();
+  });
+
+  // Fill demo credentials
+  function fillCreds(id, pw) {
+    document.getElementById('emp_no').value   = id;
+    document.getElementById('password').value = pw;
+  }
+
+  // Loading state on submit
+  document.getElementById('loginForm').addEventListener('submit', function () {
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = 'Signing in...';
+  });
+</script>
+
+</body>
+</html>

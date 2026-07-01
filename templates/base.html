@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CDAS{% endblock %} | Vizag Steel Plant</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue-900:#001a4d; --blue-800:#003087; --blue-600:#1a5fa6; --blue-400:#5b9bd5; --blue-100:#dbeafe;
+      --gold:#c8a84b; --gold-light:#f0d98a;
+      --steel:#5b7fa6; --steel-light:#e8f0f8;
+      --success:#16a34a; --warning:#d97706; --danger:#dc2626; --info:#0891b2;
+      --bg:#f0f4f8; --surface:#ffffff; --surface2:#f8fafc; --border:#e2e8f0;
+      --text:#0f172a; --text2:#475569; --text3:#94a3b8;
+      --sidebar-w:240px;
+      --shadow-sm:0 1px 3px rgba(0,0,0,.08); --shadow:0 4px 16px rgba(0,0,0,.1); --shadow-lg:0 8px 32px rgba(0,0,0,.15);
+      --radius:10px; --radius-lg:16px;
+      --transition:all .2s ease;
+    }
+    [data-theme="dark"] {
+      --bg:#0d1117; --surface:#161b22; --surface2:#21262d; --border:#30363d;
+      --text:#e6edf3; --text2:#8b949e; --text3:#484f58;
+      --steel-light:#1a2535; --blue-100:#1a2a4a;
+      --shadow-sm:0 1px 3px rgba(0,0,0,.3); --shadow:0 4px 16px rgba(0,0,0,.4);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); transition:background .3s,color .3s; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      position:fixed; top:0; left:0; height:100vh; width:var(--sidebar-w);
+      background:var(--blue-900); display:flex; flex-direction:column;
+      z-index:1000; transition:transform .3s ease;
+      box-shadow:4px 0 20px rgba(0,0,0,.3);
+    }
+    .sidebar-brand {
+      padding:1.25rem 1rem; border-bottom:1px solid rgba(255,255,255,.08);
+      display:flex; align-items:center; gap:.75rem;
+    }
+    .sidebar-brand .logo { width:36px; height:36px; background:var(--gold); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:var(--blue-900); font-weight:700; flex-shrink:0; }
+    .sidebar-brand .brand-text { line-height:1.2; }
+    .sidebar-brand .brand-title { font-size:.75rem; font-weight:700; color:var(--gold); text-transform:uppercase; letter-spacing:1px; }
+    .sidebar-brand .brand-sub { font-size:.65rem; color:rgba(255,255,255,.5); }
+
+    .sidebar-nav { flex:1; overflow-y:auto; padding:.75rem 0; }
+    .nav-section-label { font-size:.65rem; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; color:rgba(255,255,255,.3); padding:.5rem 1.25rem; margin-top:.5rem; }
+    .sidebar-link {
+      display:flex; align-items:center; gap:.75rem; padding:.65rem 1.25rem;
+      color:rgba(255,255,255,.65); text-decoration:none; font-size:.875rem; font-weight:500;
+      border-left:3px solid transparent; transition:var(--transition); margin:.1rem .5rem; border-radius:8px;
+    }
+    .sidebar-link:hover { background:rgba(255,255,255,.08); color:white; }
+    .sidebar-link.active { background:rgba(200,168,75,.15); color:var(--gold); border-left-color:var(--gold); }
+    .sidebar-link i { width:18px; text-align:center; font-size:1rem; }
+
+    .sidebar-footer { padding:1rem; border-top:1px solid rgba(255,255,255,.08); }
+    .user-pill { display:flex; align-items:center; gap:.65rem; }
+    .user-avatar { width:34px; height:34px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--blue-900); font-size:.85rem; flex-shrink:0; }
+    .user-info .user-name { font-size:.8rem; font-weight:600; color:white; line-height:1.2; }
+    .user-info .user-role { font-size:.68rem; color:rgba(255,255,255,.45); }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position:fixed; top:0; left:var(--sidebar-w); right:0; height:60px;
+      background:var(--surface); border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 1.5rem; z-index:999; box-shadow:var(--shadow-sm);
+    }
+    .topbar-title { font-size:1rem; font-weight:600; color:var(--text); }
+    .topbar-actions { display:flex; align-items:center; gap:.75rem; }
+
+    .btn-icon { width:36px; height:36px; border:1px solid var(--border); border-radius:8px; background:var(--surface2); color:var(--text2); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:var(--transition); }
+    .btn-icon:hover { background:var(--steel-light); color:var(--blue-800); border-color:var(--blue-400); }
+
+    /* ── MAIN CONTENT ── */
+    .main-content { margin-left:var(--sidebar-w); padding-top:60px; min-height:100vh; }
+    .content-area { padding:1.5rem; }
+
+    /* ── CARDS ── */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-sm); }
+    .card-header-custom { padding:.875rem 1.25rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .card-header-custom .card-title { font-size:.875rem; font-weight:600; color:var(--text); margin:0; display:flex; align-items:center; gap:.5rem; }
+    .card-header-custom .card-title i { color:var(--blue-600); }
+
+    /* ── KPI CARDS ── */
+    .kpi-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.25rem; transition:var(--transition); }
+    .kpi-card:hover { transform:translateY(-2px); box-shadow:var(--shadow); }
+    .kpi-card .kpi-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+    .kpi-card .kpi-value { font-size:1.75rem; font-weight:700; line-height:1; margin-bottom:.2rem; font-family:'JetBrains Mono',monospace; }
+    .kpi-card .kpi-label { font-size:.72rem; font-weight:500; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; }
+
+    .kpi-blue  { border-top:3px solid var(--blue-800); }  .kpi-blue  .kpi-icon { background:var(--blue-100); color:var(--blue-800); }  .kpi-blue  .kpi-value { color:var(--blue-800); }
+    .kpi-gold  { border-top:3px solid var(--gold); }      .kpi-gold  .kpi-icon { background:#fef9ec; color:var(--gold); }             .kpi-gold  .kpi-value { color:var(--gold); }
+    .kpi-green { border-top:3px solid var(--success); }   .kpi-green .kpi-icon { background:#dcfce7; color:var(--success); }           .kpi-green .kpi-value { color:var(--success); }
+    .kpi-red   { border-top:3px solid var(--danger); }    .kpi-red   .kpi-icon { background:#fee2e2; color:var(--danger); }            .kpi-red   .kpi-value { color:var(--danger); }
+
+    /* ── BADGES ── */
+    .badge-agency { display:inline-block; padding:.2em .6em; border-radius:5px; font-size:.72rem; font-weight:600; }
+    .badge-Operations  { background:#dbeafe; color:#1e40af; }
+    .badge-Mechanical  { background:#fef3c7; color:#92400e; }
+    .badge-Electrical  { background:#fde8ff; color:#7e22ce; }
+    .badge-Shutdown    { background:#fee2e2; color:#991b1b; }
+    .badge-Civil       { background:#dcfce7; color:#166534; }
+    .badge-Idle        { background:#f1f5f9; color:#475569; }
+    .badge-Miscellaneous{ background:#f0fdf4; color:#15803d; }
+
+    /* ── TABLES ── */
+    .table-modern { width:100%; border-collapse:collapse; font-size:.84rem; }
+    .table-modern th { background:var(--surface2); color:var(--text2); font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px; padding:.65rem 1rem; border-bottom:2px solid var(--border); white-space:nowrap; }
+    .table-modern td { padding:.6rem 1rem; border-bottom:1px solid var(--border); color:var(--text); vertical-align:middle; }
+    .table-modern tr:hover td { background:var(--surface2); }
+    .table-modern tr:last-child td { border-bottom:none; }
+
+    /* ── FORMS ── */
+    .form-label-sm { font-size:.8rem; font-weight:600; color:var(--text2); margin-bottom:.35rem; display:block; }
+    .form-control, .form-select { background:var(--surface); border:1.5px solid var(--border); color:var(--text); border-radius:8px; font-size:.875rem; padding:.55rem .875rem; transition:var(--transition); }
+    .form-control:focus, .form-select:focus { border-color:var(--blue-600); box-shadow:0 0 0 3px rgba(26,95,166,.12); background:var(--surface); color:var(--text); outline:none; }
+    .form-control::placeholder { color:var(--text3); }
+    textarea.form-control { resize:vertical; min-height:90px; }
+
+    /* ── BUTTONS ── */
+    .btn-primary-vsp { background:var(--blue-800); color:white; border:none; border-radius:8px; padding:.6rem 1.25rem; font-size:.875rem; font-weight:600; cursor:pointer; transition:var(--transition); display:inline-flex; align-items:center; gap:.5rem; }
+    .btn-primary-vsp:hover { background:var(--blue-900); color:white; transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,48,135,.3); }
+    .btn-outline-vsp { background:transparent; color:var(--blue-800); border:1.5px solid var(--blue-800); border-radius:8px; padding:.55rem 1.1rem; font-size:.875rem; font-weight:600; cursor:pointer; transition:var(--transition); display:inline-flex; align-items:center; gap:.5rem; }
+    .btn-outline-vsp:hover { background:var(--blue-800); color:white; }
+    .btn-sm-action { width:30px; height:30px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); color:var(--text2); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:var(--transition); font-size:.8rem; }
+    .btn-sm-action:hover { background:var(--blue-100); color:var(--blue-800); border-color:var(--blue-400); }
+
+    /* ── FLASH ── */
+    .flash-container { position:fixed; top:70px; right:1.5rem; z-index:9999; display:flex; flex-direction:column; gap:.5rem; }
+    .flash-msg { padding:.75rem 1.25rem; border-radius:10px; font-size:.875rem; font-weight:500; box-shadow:var(--shadow); display:flex; align-items:center; gap:.75rem; max-width:340px; animation:slideIn .3s ease; }
+    .flash-success { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+    .flash-danger  { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+    /* ── DARK MODE ── */
+    [data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background:var(--surface2); border-color:var(--border); color:var(--text); }
+    [data-theme="dark"] .table-modern th { background:var(--surface2); }
+
+    /* ── MOBILE ── */
+    .sidebar-toggle { display:none; }
+    /* ── TABLET (≤992px) ── */
+    @media(max-width:992px){
+      :root { --sidebar-w:0px; }
+      .sidebar { transform:translateX(-100%); width:240px; z-index:1050; }
+      .sidebar.open { transform:translateX(0); }
+      .main-content { margin-left:0; }
+      .topbar { left:0; }
+      .sidebar-toggle { display:flex !important; }
+      .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1040; }
+      .sidebar-overlay.active { display:block; }
+    }
+    /* ── MOBILE (≤576px) ── */
+    @media(max-width:576px){
+      .content-area { padding:1rem .75rem; }
+      .kpi-card { padding:1rem; }
+      .kpi-card .kpi-value { font-size:1.4rem; }
+      .card-header-custom { padding:.75rem 1rem; }
+      .topbar { padding:0 1rem; }
+      .topbar-title { font-size:.875rem; }
+      .filter-bar .row { gap:.5rem !important; }
+    }
+
+    /* ── MISC ── */
+    .page-title { font-size:1.25rem; font-weight:700; color:var(--text); margin:0 0 1.25rem; }
+    .text-muted-sm { font-size:.75rem; color:var(--text3); }
+    .divider { border:none; border-top:1px solid var(--border); margin:1rem 0; }
+    .scroll-x { overflow-x:auto; }
+    .chart-wrap { position:relative; }
+    .empty-state { text-align:center; padding:2.5rem 1rem; color:var(--text3); }
+    .empty-state i { font-size:2.5rem; display:block; margin-bottom:.75rem; }
+
+    /* ── PROGRESS BARS ── */
+    .progress-vsp { height:6px; border-radius:3px; background:var(--border); overflow:hidden; }
+    .progress-vsp-fill { height:100%; border-radius:3px; background:var(--blue-600); transition:width .6s ease; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+{% if session.user %}
+<!-- Sidebar overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo"><i class="bi bi-bar-chart-steps"></i></div>
+    <div class="brand-text">
+      <div class="brand-title">CDAS</div>
+      <div class="brand-sub">Vizag Steel Plant</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+    <a href="{{ url_for('dashboard') }}" class="sidebar-link {% if request.endpoint=='dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2"></i> Dashboard
+    </a>
+    {% if session.role in ['sys_admin','dept_admin','dept_user'] %}
+    <a href="{{ url_for('delay_entry') }}" class="sidebar-link {% if request.endpoint=='delay_entry' %}active{% endif %}">
+      <i class="bi bi-pencil-square"></i> Delay Entry
+    </a>
+    {% endif %}
+    {% if session.role in ['sys_admin','dept_admin','ppm_admin','ppm_user'] %}
+    <a href="{{ url_for('reports') }}" class="sidebar-link {% if request.endpoint=='reports' %}active{% endif %}">
+      <i class="bi bi-graph-up-arrow"></i> Reports & Analytics
+    </a>
+    {% endif %}
+    {% if session.role in ['sys_admin','dept_admin','ppm_admin'] %}
+    <div class="nav-section-label">Admin</div>
+    <a href="{{ url_for('user_management') }}" class="sidebar-link {% if request.endpoint=='user_management' %}active{% endif %}">
+      <i class="bi bi-people"></i> User Management
+    </a>
+    {% endif %}
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-pill">
+      <div class="user-avatar">{{ session.emp_name[0] }}</div>
+      <div class="user-info">
+        <div class="user-name">{{ session.emp_name }}</div>
+        <div class="user-role">{{ session.role }}</div>
+      </div>
+      <a href="{{ url_for('logout') }}" class="btn-icon ms-auto" title="Logout" style="border:none;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);">
+        <i class="bi bi-box-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<!-- Topbar -->
+<header class="topbar">
+  <div class="d-flex align-items-center gap-3">
+    <button class="btn-icon sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <span class="topbar-title">{% block page_title %}{% endblock %}</span>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn-icon" onclick="toggleTheme()" title="Toggle dark mode" id="themeBtn"><i class="bi bi-moon"></i></button>
+    <div class="d-none d-md-flex align-items-center gap-2 ps-2" style="border-left:1px solid var(--border);">
+      <div style="width:30px;height:30px;border-radius:50%;background:var(--blue-800);display:flex;align-items:center;justify-content:center;color:white;font-size:.75rem;font-weight:700;">{{ session.emp_name[0] }}</div>
+      <div style="font-size:.8rem;font-weight:500;color:var(--text);">{{ session.emp_name }}</div>
+    </div>
+  </div>
+</header>
+
+<!-- Flash messages -->
+<div class="flash-container">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="flash-msg flash-{{ cat }}">
+    <i class="bi bi-{% if cat=='success' %}check-circle-fill{% else %}exclamation-triangle-fill{% endif %}"></i>
+    {{ msg }}
+    <button onclick="this.parentElement.remove()" style="border:none;background:none;cursor:pointer;margin-left:auto;color:inherit;opacity:.6;font-size:1rem;">&times;</button>
+  </div>
+  {% endfor %}
+{% endwith %}
+</div>
+{% endif %}
+
+<div class="{% if session.user %}main-content{% endif %}">
+  <div class="content-area">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Dark mode
+  const saved = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('themeBtn') && updateThemeIcon(saved);
+  function toggleTheme(){
+    const cur = document.documentElement.getAttribute('data-theme');
+    const next = cur==='light'?'dark':'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeIcon(next);
+  }
+  function updateThemeIcon(t){
+    const btn = document.getElementById('themeBtn');
+    if(btn) btn.querySelector('i').className = t==='dark'?'bi bi-sun':'bi bi-moon';
+  }
+  // Sidebar mobile
+  function toggleSidebar(){
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('active');
+  }
+  function closeSidebar(){
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+  }
+  // Auto-dismiss flash after 4s
+  setTimeout(()=>{ document.querySelectorAll('.flash-msg').forEach(el=>el.remove()); }, 4000);
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

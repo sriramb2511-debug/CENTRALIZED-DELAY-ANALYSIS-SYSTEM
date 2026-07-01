@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}User Management{% endblock %}
+{% block page_title %}<i class="bi bi-people me-2" style="color:var(--blue-600)"></i>User Management{% endblock %}
+
+{% block extra_head %}
+<style>
+  .filter-bar { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:.875rem 1rem; margin-bottom:1rem; }
+  .search-wrap { position:relative; }
+  .search-wrap i { position:absolute; left:.75rem; top:50%; transform:translateY(-50%); color:var(--text3); font-size:.9rem; pointer-events:none; }
+  .search-wrap input { padding-left:2.2rem; }
+  .sort-th { cursor:pointer; user-select:none; white-space:nowrap; }
+  .sort-th:hover { color:var(--blue-600); }
+  .sort-arrow { font-size:.65rem; opacity:.4; margin-left:3px; }
+  .sort-th.asc  .sort-arrow { opacity:1; }
+  .sort-th.desc .sort-arrow { opacity:1; }
+  .stat-pill { display:inline-block; background:var(--steel-light); color:var(--blue-800); font-size:.72rem; font-weight:700; padding:.15em .6em; border-radius:4px; font-family:'JetBrains Mono',monospace; min-width:36px; text-align:center; }
+  .status-active   { display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; font-weight:600; background:#dcfce7; color:#166534; padding:.25em .65em; border-radius:20px; }
+  .status-inactive { display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; font-weight:600; background:#fee2e2; color:#991b1b; padding:.25em .65em; border-radius:20px; }
+  .status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .dot-active   { background:#16a34a; }
+  .dot-inactive { background:#dc2626; }
+  .modal-content { background:var(--surface); border:1px solid var(--border); border-radius:14px; }
+  .modal-header, .modal-footer { border-color:var(--border); }
+  .modal-body { padding:1.25rem 1.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Top bar: title + Add button -->
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <div style="font-size:.82rem;color:var(--text2);">Manage system users, roles and access</div>
+  <button class="btn-primary-vsp" data-bs-toggle="modal" data-bs-target="#addUserModal">
+    <i class="bi bi-person-plus"></i> Add New User
+  </button>
+</div>
+
+<!-- KPI strip -->
+{% set total_u  = users|length %}
+{% set active_u = users|selectattr('active','equalto',1)|list|length %}
+<div class="row g-2 mb-3">
+  {% for icon,bg,tc,val,lbl in [
+      ('bi-people',      'var(--blue-100)','var(--blue-800)',  total_u,                                    'Total Users'),
+      ('bi-person-check','#dcfce7',        '#16a34a',          active_u,                                   'Active'),
+      ('bi-person-x',    '#fee2e2',        '#dc2626',          total_u - active_u,                         'Inactive'),
+      ('bi-shield-check','#fef3c7',        '#d97706',          users|selectattr('role','in',['sys_admin','dept_admin'])|list|length, 'Admins'),
+  ] %}
+  <div class="col-6 col-md-3">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.875rem 1rem;display:flex;align-items:center;gap:.875rem;">
+      <div style="width:38px;height:38px;background:{{ bg }};border-radius:9px;display:flex;align-items:center;justify-content:center;color:{{ tc }};font-size:1.1rem;flex-shrink:0;"><i class="bi {{ icon }}"></i></div>
+      <div>
+        <div style="font-size:1.4rem;font-weight:700;color:{{ tc }};font-family:'JetBrains Mono',monospace;line-height:1;">{{ val }}</div>
+        <div style="font-size:.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">{{ lbl }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Users table card -->
+<div class="card">
+  <!-- Filters inside card header area -->
+  <div class="p-3 pb-2">
+    <div class="filter-bar">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-md-4">
+          <div class="search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchBox" class="form-control form-control-sm"
+              placeholder="Search by ID, name or department...">
+          </div>
+        </div>
+        <div class="col-4 col-md-2">
+          <select id="statusFilter" class="form-select form-select-sm">
+            <option value="">All Status</option>
+            <option value="1">Active</option>
+            <option value="0">Inactive</option>
+          </select>
+        </div>
+        <div class="col-4 col-md-2">
+          <select id="roleFilter" class="form-select form-select-sm">
+            <option value="">All Roles</option>
+            {% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-4 col-md-2">
+          <select id="deptFilter" class="form-select form-select-sm">
+            <option value="">All Depts</option>
+            {% for d in depts %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-2">
+          <button onclick="clearFilters()" class="btn-outline-vsp w-100" style="padding:.38rem .5rem;font-size:.8rem;">
+            <i class="bi bi-x-lg me-1"></i>Clear
+          </button>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:.78rem;color:var(--text2);padding-bottom:.5rem;">
+      Showing <strong id="visibleCount">{{ users|length }}</strong> of <strong>{{ users|length }}</strong> users
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="scroll-x">
+    <table class="table-modern" id="userTable">
+      <thead>
+        <tr>
+          <th class="sort-th" data-col="0">Emp ID <span class="sort-arrow">▲</span></th>
+          <th class="sort-th" data-col="1">Name <span class="sort-arrow">▲</span></th>
+          <th class="sort-th" data-col="2">Department <span class="sort-arrow">▲</span></th>
+          <th class="sort-th" data-col="3">Designation <span class="sort-arrow">▲</span></th>
+          <th class="sort-th" data-col="4">Role <span class="sort-arrow">▲</span></th>
+          <th class="sort-th" data-col="5" style="text-align:right;">Entries <span class="sort-arrow">▲</span></th>
+          <th class="sort-th" data-col="6">Status <span class="sort-arrow">▲</span></th>
+          <th style="text-align:center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody">
+        {% for u in users %}
+        <tr data-emp="{{ u.emp_no|lower }}"
+            data-name="{{ u.emp_name|lower }}"
+            data-dept="{{ (u.dept or '')|lower }}"
+            data-role="{{ u.role }}"
+            data-status="{{ u.active }}">
+          <td><code style="font-size:.78rem;background:var(--steel-light);padding:.15em .5em;border-radius:4px;">{{ u.emp_no }}</code></td>
+          <td style="font-weight:500;font-size:.85rem;">{{ u.emp_name }}</td>
+          <td style="font-size:.82rem;color:var(--text2);">{{ u.dept or '—' }}</td>
+          <td style="font-size:.8rem;color:var(--text2);">{{ u.designation or '—' }}</td>
+          <td>
+            <form method="POST" style="margin:0;">
+              <input type="hidden" name="action" value="update_role">
+              <input type="hidden" name="emp_no" value="{{ u.emp_no }}">
+              <select name="role" class="form-select form-select-sm"
+                style="min-width:110px;font-size:.75rem;" onchange="this.form.submit()">
+                {% for r in roles %}
+                <option value="{{ r }}"{% if u.role==r %} selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td style="text-align:right;">
+            <span class="stat-pill">{{ user_stats.get(u.emp_no, 0) }}</span>
+          </td>
+          <td>
+            {% if u.active %}
+            <span class="status-active"><span class="status-dot dot-active"></span>Active</span>
+            {% else %}
+            <span class="status-inactive"><span class="status-dot dot-inactive"></span>Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1 justify-content-center">
+              <form method="POST" style="margin:0;">
+                <input type="hidden" name="action" value="toggle_status">
+                <input type="hidden" name="emp_no" value="{{ u.emp_no }}">
+                <button type="submit" class="btn-sm-action"
+                  title="{% if u.active %}Deactivate{% else %}Activate{% endif %}"
+                  {% if u.emp_no == session.user %}disabled{% endif %}>
+                  <i class="bi bi-{% if u.active %}person-x{% else %}person-check{% endif %}"></i>
+                </button>
+              </form>
+              <button class="btn-sm-action" title="Reset Password"
+                data-bs-toggle="modal" data-bs-target="#pwModal"
+                data-emp="{{ u.emp_no }}" data-name="{{ u.emp_name }}">
+                <i class="bi bi-key"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <!-- Empty state when no filter match -->
+  <div id="noResultsMsg" class="empty-state py-4" style="display:none;">
+    <i class="bi bi-search"></i>No users match the current filters
+  </div>
+</div>
+
+
+<!-- ── ADD USER MODAL ─────────────────────────────────────────────── -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" style="color:var(--text);font-weight:600;">
+          <i class="bi bi-person-plus me-2" style="color:var(--blue-600);"></i>Add New User
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="addUserForm">
+        <div class="modal-body">
+          <input type="hidden" name="action" value="add">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label-sm">Employee ID / No. *</label>
+              <input type="text" name="emp_no" class="form-control"
+                placeholder="e.g. 12345" required style="text-transform:uppercase;">
+            </div>
+            <div class="col-6">
+              <label class="form-label-sm">Full Name *</label>
+              <input type="text" name="emp_name" class="form-control"
+                placeholder="Employee Name" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label-sm">Department</label>
+              <input type="text" name="dept" class="form-control" placeholder="e.g. RMHP">
+            </div>
+            <div class="col-6">
+              <label class="form-label-sm">Designation</label>
+              <input type="text" name="designation" class="form-control" placeholder="e.g. Engineer">
+            </div>
+            <div class="col-6">
+              <label class="form-label-sm">Role *</label>
+              <select name="role" class="form-select" required>
+                {% for r in roles %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label-sm">Initial Password *</label>
+              <input type="password" name="password" class="form-control"
+                placeholder="Set password" required>
+            </div>
+          </div>
+          <!-- Role reference -->
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-top:1rem;">
+            <div style="font-size:.7rem;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;">Role Reference</div>
+            <div class="row g-1">
+              {% for r,c,d in [
+                ('sys_admin',  '#1e3a8a','Full system access — all pages'),
+                ('dept_admin', '#075985','Dept management + reports'),
+                ('dept_user',  '#334155','Delay entry only'),
+                ('ppm_admin',  '#92400e','Reports + PPM management'),
+                ('ppm_user',   '#166534','View reports only'),
+              ] %}
+              <div class="col-12 d-flex align-items-center gap-2">
+                <span style="font-size:.65rem;font-weight:700;color:{{ c }};min-width:80px;">{{ r }}</span>
+                <span style="font-size:.72rem;color:var(--text2);">{{ d }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-outline-vsp" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-primary-vsp">
+            <i class="bi bi-person-plus me-1"></i>Add User
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── RESET PASSWORD MODAL ───────────────────────────────────────── -->
+<div class="modal fade" id="pwModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title" style="color:var(--text);font-weight:600;">
+          <i class="bi bi-key me-2" style="color:var(--gold);"></i>Reset Password
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST">
+        <div class="modal-body">
+          <input type="hidden" name="action" value="reset_password">
+          <input type="hidden" name="emp_no" id="pwEmpNo">
+          <p style="font-size:.82rem;color:var(--text2);margin-bottom:1rem;">
+            Resetting for: <strong id="pwEmpName" style="color:var(--text);"></strong>
+          </p>
+          <label class="form-label-sm">New Password *</label>
+          <input type="password" name="new_password" class="form-control"
+            placeholder="Enter new password" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-outline-vsp" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn-primary-vsp">
+            <i class="bi bi-key me-1"></i>Reset
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── FILTER & SEARCH (client-side, instant) ───────────────────────────────────
+const allRows  = Array.from(document.querySelectorAll('#userTableBody tr'));
+const total    = allRows.length;
+
+function applyFilters() {
+  const search = document.getElementById('searchBox').value.toLowerCase().trim();
+  const status = document.getElementById('statusFilter').value;
+  const role   = document.getElementById('roleFilter').value;
+  const dept   = document.getElementById('deptFilter').value.toLowerCase();
+
+  let visible = 0;
+  allRows.forEach(row => {
+    const ok =
+      (!search || row.dataset.emp.includes(search) || row.dataset.name.includes(search) || row.dataset.dept.includes(search)) &&
+      (!status || row.dataset.status === status) &&
+      (!role   || row.dataset.role === role) &&
+      (!dept   || row.dataset.dept.includes(dept));
+
+    row.style.display = ok ? '' : 'none';
+    if (ok) visible++;
+  });
+
+  document.getElementById('visibleCount').textContent = visible;
+  document.getElementById('noResultsMsg').style.display = visible === 0 ? '' : 'none';
+}
+
+function clearFilters() {
+  ['searchBox','statusFilter','roleFilter','deptFilter'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  applyFilters();
+}
+
+['searchBox','statusFilter','roleFilter','deptFilter'].forEach(id => {
+  document.getElementById(id).addEventListener('input',  applyFilters);
+  document.getElementById(id).addEventListener('change', applyFilters);
+});
+
+// ── SORTING ───────────────────────────────────────────────────────────────────
+let sortCol = -1, sortDir = 'asc';
+document.querySelectorAll('.sort-th').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = parseInt(th.dataset.col);
+    sortDir = (sortCol === col && sortDir === 'asc') ? 'desc' : 'asc';
+    sortCol = col;
+
+    document.querySelectorAll('.sort-th').forEach(h => {
+      h.classList.remove('asc','desc');
+      h.querySelector('.sort-arrow').textContent = '▲';
+    });
+    th.classList.add(sortDir);
+    th.querySelector('.sort-arrow').textContent = sortDir === 'asc' ? '▲' : '▼';
+
+    const tbody = document.getElementById('userTableBody');
+    const visible = allRows.filter(r => r.style.display !== 'none');
+    const hidden  = allRows.filter(r => r.style.display === 'none');
+
+    visible.sort((a, b) => {
+      const av = a.cells[col]?.textContent.trim() || '';
+      const bv = b.cells[col]?.textContent.trim() || '';
+      const n  = parseFloat(av) - parseFloat(bv);
+      const cmp = isNaN(n) ? av.localeCompare(bv) : n;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    [...visible, ...hidden].forEach(r => tbody.appendChild(r));
+  });
+});
+
+// ── RESET PASSWORD MODAL ──────────────────────────────────────────────────────
+document.getElementById('pwModal').addEventListener('show.bs.modal', e => {
+  document.getElementById('pwEmpNo').value        = e.relatedTarget.dataset.emp;
+  document.getElementById('pwEmpName').textContent = e.relatedTarget.dataset.name;
+});
+</script>
+{% endblock %}
